@@ -39,20 +39,23 @@ public:
     void disableSensor4() { enablePin4 = 0; }
 
     // Read values from sensors with sampling
-    void readSensorValues() {
-        const int numSamples = 10; // Adjust the number of samples as needed
-        double sumSensorValue1 = 0.0;
-        double sumSensorValue2 = 0.0;
-        double sumSensorValue3 = 0.0;
-        double sumSensorValue4 = 0.0;
+    void readSensorValues(int samplingDuration) {
+    Timer timer;
+    timer.start();
 
-    // Sampling starts
-    // Read values multiple times and accumulate the sum
-    for (int i = 0; i < numSamples; ++i) {
+    double sumSensorValue1 = 0.0;
+    double sumSensorValue2 = 0.0;
+    double sumSensorValue3 = 0.0;
+    double sumSensorValue4 = 0.0;
+    int numSamples = 0;
+
+    // Sample sensor readings over the specified duration
+    while (timer.read() < samplingDuration) {
         sumSensorValue1 += static_cast<double>(sensor1.read());
         sumSensorValue2 += static_cast<double>(sensor2.read());
         sumSensorValue3 += static_cast<double>(sensor3.read());
         sumSensorValue4 += static_cast<double>(sensor4.read());
+        numSamples++;
     }
 
     // Calculate the average sensor values
@@ -82,7 +85,6 @@ public:
     }
 
     // Determine the turning angle based on sensor values
-    // Change algorithm as needed
     double determineAngle() const {
         // Algorithm: Adjust the turning angle based on the difference in sensor values
         int leftSensorValue = sensor1.read();
@@ -111,7 +113,7 @@ int main() {
     // Toggle sensor enables continuously while reading value and changing angle
     while (true) {
         // Simulate reading sensor values
-        lineSensor.readSensorValues();
+        lineSensor.readSensorValues(1);
         // Determine turning angle
         double turningAngle = lineSensor.determineAngle();
         lineSensor.toggleSensors();
@@ -119,4 +121,3 @@ int main() {
 
     return 0;
 }
-

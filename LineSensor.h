@@ -12,7 +12,11 @@ private:
     DigitalOut enablePin3; // Pin connected to Darlington array for sensor 3
     DigitalOut enablePin4; // Pin connected to Darlington array for sensor 4
     Timer timer;
-    int pollingInterval; // Interval for polling sensors in milliseconds
+    int pollingInterval; // Interval for polling sensors
+    double averageSensorValue1; // Member variable to store average sensor value 1
+    double averageSensorValue2; // Member variable to store average sensor value 2
+    double averageSensorValue3; // Member variable to store average sensor value 3
+    double averageSensorValue4; // Member variable to store average sensor value 4
 
 
 public:
@@ -39,20 +43,23 @@ public:
     void disableSensor4() { enablePin4 = 0; }
 
     // Read values from sensors with sampling
-    void readSensorValues() {
-        const int numSamples = 10; // Adjust the number of samples as needed
-        double sumSensorValue1 = 0.0;
-        double sumSensorValue2 = 0.0;
-        double sumSensorValue3 = 0.0;
-        double sumSensorValue4 = 0.0;
+    void readSensorValues(float samplingDuration) {
+    Timer timer;
+    timer.start();
 
-    // Sampling starts
-    // Read values multiple times and accumulate the sum
-    for (int i = 0; i < numSamples; ++i) {
+    double sumSensorValue1 = 0.0;
+    double sumSensorValue2 = 0.0;
+    double sumSensorValue3 = 0.0;
+    double sumSensorValue4 = 0.0;
+    int numSamples = 0;
+
+    // Sample sensor readings over the specified duration
+    while (timer.read() < samplingDuration) {
         sumSensorValue1 += static_cast<double>(sensor1.read());
         sumSensorValue2 += static_cast<double>(sensor2.read());
         sumSensorValue3 += static_cast<double>(sensor3.read());
         sumSensorValue4 += static_cast<double>(sensor4.read());
+        numSamples++;
     }
 
     // Calculate the average sensor values
@@ -61,7 +68,7 @@ public:
     double averageSensorValue3 = sumSensorValue3 / numSamples;
     double averageSensorValue4 = sumSensorValue4 / numSamples;
 
-    // Use average values for further processing
+    // Use average values for further processing  
     }
 
     // Toggle the enable/disable state of sensors 1/2 and 3/4
@@ -81,16 +88,44 @@ public:
         wait_ms(pollingInterval);
     }
 
-    // Determine the turning angle based on sensor values
-    // Change algorithm as needed
-    double determineAngle() const {
-        // Algorithm: Adjust the turning angle based on the difference in sensor values
-        int leftSensorValue = sensor1.read();
-        int rightSensorValue = sensor2.read();
-        double angle = (leftSensorValue - rightSensorValue) * 45.0; // Adjust factor as needed
+    // Determine the speed for turning based on sensor values (1st pair)
+    void TurningSpeed1() {
+    // Read sensor values
+    double left1 = averageSensorValue1;
+    double right1 = averageSensorValue2;
 
-        return angle;
+    // Calculate the difference between sensor readings
+    double difference = left1 - right1;
+
+    // Calculate the new motor speeds based on the difference
+    // Positive difference means increase left motor speed
+    // Negative difference means increase right motor speed
+    if (difference > 0) {
+    double desired_motor1 = encoder1.getRPS() + (difference * ADJUSTMENT_FACTOR);
+    } else {
+    double desired_motor2 = encoder2.getRPS() - (difference * ADJUSTMENT_FACTOR);
     }
+}
+
+    // Determine the speed for turning based on sensor values (2nd pair)
+    void TurningSpeed2() {
+    // Read sensor values
+    double left2 = averageSensorValue3;
+    double right2 = averageSensorValue4;
+
+    // Calculate the difference between sensor readings
+    double difference = left2 - right2;
+
+    // Calculate the new motor speeds based on the difference
+    // Positive difference means increase left motor speed
+    // Negative difference means increase right motor speed
+    if (difference > 0) {
+    double desired_motor1 = encoder1.getRPS() + (difference * ADJUSTMENT_FACTOR);
+    } else {
+    double desired_motor2 = encoder2.getRPS() - (difference * ADJUSTMENT_FACTOR);
+    }
+}
+
 };
 
 
@@ -105,18 +140,24 @@ int main() {
     PinName enablePin3 = D4;
     PinName enablePin4 = D5;
     
-    // Create a LineSensor with 4 sensors and enable pins and interval in milisecond
-    LineSensor lineSensor(enablePin1, enablePin2, enablePin3, enablePin4, pin1, pin2, pin3, pin4, 10);
+    // Create a LineSensor with 4 sensors and enable pins and interval
+    LineSensor lineSensor(enablePin1, enablePin2, enablePin3, enablePin4, pin1, pin2, pin3, pin4, 1);
 
-    // Toggle sensor enables continuously while reading value and changing angle
+    // Toggle sensor enables continuously while reading value and changing turning speed
     while (true) {
         // Simulate reading sensor values
-        lineSensor.readSensorValues();
-        // Determine turning angle
-        double turningAngle = lineSensor.determineAngle();
+        lineSensor.readSensorValues(0.1);
+        
+        if (enablePin1 == 1 && enablePin2 == 1) {
+        lineSensor.TurningSpeed1();
+        } else if (enablePin3 == 1 && enablePin4 == 1) {
+        lineSensor.TurningSpeed2();
+        } 
+        
         lineSensor.toggleSensors();
     }
 
     return 0;
 }
+
 
